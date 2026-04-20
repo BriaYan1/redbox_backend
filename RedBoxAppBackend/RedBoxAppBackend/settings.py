@@ -120,4 +120,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
+import os
+
 STATIC_URL = 'static/'
+
+# Esta línea es vital para que Django encuentre los estilos en desarrollo
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
+
+# Esta es la carpeta donde se reunirán todos los estilos al pasar a producción
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')

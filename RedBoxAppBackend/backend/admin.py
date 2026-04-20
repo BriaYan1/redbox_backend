@@ -3,8 +3,7 @@ from backend.models import Patologias
 from backend.models import Roles
 from backend.models import Usuarios
 from backend.models import Usuario_roles
-from backend.models import Biometrias
-from backend.models import Entrenadores
+from backend.models import Biometria
 from backend.models import Planes
 from backend.models import Usuario_planes   
 from backend.models import Accesos
@@ -22,8 +21,7 @@ admin.site.register(Patologias)
 admin.site.register(Roles)
 admin.site.register(Usuarios)
 admin.site.register(Usuario_roles)
-admin.site.register(Biometrias)
-admin.site.register(Entrenadores)
+admin.site.register(Biometria)
 admin.site.register(Planes)
 admin.site.register(Usuario_planes)
 admin.site.register(Accesos)
