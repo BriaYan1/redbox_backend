@@ -39,9 +39,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'backend',
+    'corsheaders',
+    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -131,3 +134,7 @@ STATICFILES_DIRS = [
 
 # Esta es la carpeta donde se reunirán todos los estilos al pasar a producción
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+ALLOWED_HOSTS = ['*']
+
+CORS_ALLOW_ALL_ORIGINS = True

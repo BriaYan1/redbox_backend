@@ -1,7 +1,7 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # Create your models here.
-from django.db import models
 
 class Roles(models.Model):
     # Definimos las constantes para los roles
@@ -42,7 +42,7 @@ class Usuarios(models.Model):
     ]
     
     id_usuario = models.AutoField(primary_key=True)
-    id_auth_user = models.IntegerField(unique=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     nombre_usuario = models.CharField(max_length=100)
     apellido_usuario = models.CharField(max_length=100)
     email_usuario = models.EmailField(unique=True)
@@ -52,7 +52,6 @@ class Usuarios(models.Model):
     genero_usuario = models.CharField(
         max_length= 5,
         choices=OPCIONES_GENERO,      
-        unique=True             
     )
     fecha_creacion_usuario = models.DateTimeField(auto_now_add=True)
     activo_usuario = models.BooleanField(default=True)

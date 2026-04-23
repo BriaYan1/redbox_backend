@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from backend.models import *
+from django.contrib.auth.models import User
 
 """El serializador convierte objetos complejos, como los modelos de Django, en tipos de datos nativos de Python que luego pueden ser fácilmente renderizados en JSON, XML u otros formatos de contenido. También se encarga de la validación de datos y la deserialización, es decir, convertir datos entrantes en objetos complejos."""
 
@@ -14,6 +15,22 @@ class RolesSerializer(serializers.ModelSerializer):
         model = Roles
         fields = '__all__'
 
+class UsuarioRegistroSerializer(serializers.ModelSerializer):
+    contrasena_usuario = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = Usuarios
+        fields = ['nombre_usuario', 'apellido_usuario', 'email_usuario', 'cedula_usuario', 'telefono_usuario', 'fecha_nacimiento_usuario', 'genero_usuario', 'contrasena_usuario']
+
+    def create(self, validated_data):
+        password = validated_data.pop('contrasena_usuario')
+        username = validated_data.get('email_usuario')  # Usar email como username para sincronizar con login
+        email = validated_data.get('email_usuario')
+
+        user = User.objects.create_user(username=username, password=password, email=email)
+        usuario = Usuarios.objects.create(user=user, **validated_data)
+        return usuario
+
 class UsuariosSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuarios
@@ -24,10 +41,6 @@ class Usuario_rolesSerializer(serializers.ModelSerializer):
         model = Usuario_roles
         fields = '__all__'
 
-class Usuario_rolesSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Usuario_roles
-        fields = '__all__'
 
 class BiometriaSerializer(serializers.ModelSerializer):
     class Meta:

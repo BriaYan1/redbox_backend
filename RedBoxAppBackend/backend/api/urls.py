@@ -1,5 +1,6 @@
 from rest_framework import routers
 from backend.api import views
+from django.urls import path, re_path
 
 router = routers.DefaultRouter()
 router.register('patologias', views.PatologiasViewSet, basename='patologias')
@@ -17,3 +18,9 @@ router.register('planificacion_diaria', views.Planificacion_diariaViewSet, basen
 router.register('resultados', views.ResultadosViewSet, basename='resultados')
 
 urlpatterns = router.urls
+urlpatterns += [
+    re_path('login/', views.login, name='login'),
+    re_path('registro/', views.registro, name='registro'), 
+    re_path('perfil/', views.perfil, name='perfil'),
+]
+
