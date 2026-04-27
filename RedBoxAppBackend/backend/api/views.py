@@ -38,13 +38,18 @@ def login(request):
 
     return Response({'token': token.key, 'user': usuario_data}, status=status.HTTP_200_OK)
 
+
 @api_view(['POST'])
 def registro(request):
     serializer = UsuarioRegistroSerializer(data=request.data)
     if serializer.is_valid():
         usuario = serializer.save()
         token = Token.objects.create(user=usuario.user)
-        return Response({'token': token.key, 'user': serializer.data}, status=status.HTTP_201_CREATED)
+        return Response({
+            'token': token.key,
+            'user_id': usuario.user.id,
+            'email': usuario.email_usuario
+        }, status=status.HTTP_201_CREATED)
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

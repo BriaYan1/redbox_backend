@@ -17,20 +17,30 @@ class RolesSerializer(serializers.ModelSerializer):
 
 class UsuarioRegistroSerializer(serializers.ModelSerializer):
     contrasena_usuario = serializers.CharField(write_only=True)
+    user = serializers.IntegerField(required=False, read_only=True)  # override manual
 
     class Meta:
         model = Usuarios
-        fields = ['nombre_usuario', 'apellido_usuario', 'email_usuario', 'cedula_usuario', 'telefono_usuario', 'fecha_nacimiento_usuario', 'genero_usuario', 'contrasena_usuario']
+        fields = [
+            'user',  # lo dejamos pero como read_only e integer
+            'pnombre_usuario', 'snombre_usuario', 'papellido_usuario', 
+            'sapellido_usuario', 'email_usuario', 'cedula_usuario', 
+            'telefono_usuario', 'fecha_nacimiento_usuario', 
+            'genero_usuario', 'contrasena_usuario'
+        ]
 
     def create(self, validated_data):
+        validated_data.pop('user', None)  # por si acaso llega algo
         password = validated_data.pop('contrasena_usuario')
-        username = validated_data.get('email_usuario')  # Usar email como username para sincronizar con login
         email = validated_data.get('email_usuario')
-
-        user = User.objects.create_user(username=username, password=password, email=email)
+        user = User.objects.create_user(
+            username=email, 
+            email=email, 
+            password=password
+        )
         usuario = Usuarios.objects.create(user=user, **validated_data)
         return usuario
-
+    
 class UsuariosSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuarios
