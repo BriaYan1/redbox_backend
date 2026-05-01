@@ -105,6 +105,14 @@ class Usuario_patologiasViewSet(viewsets.ModelViewSet):
 class ClasesViewSet(viewsets.ModelViewSet):
     queryset = Clases.objects.all()
     serializer_class = ClasesSerializer
+
+    def get_queryset(self):
+        queryset = Clases.objects.all()
+        id_usuario = self.request.query_params.get('id_usuario')
+        if id_usuario is not None:
+            # Filtra las clases que pertenecen a ese usuario
+            queryset = queryset.filter(id_usuario=id_usuario)
+        return queryset
     
 class Planificacion_diariaViewSet(viewsets.ModelViewSet):
     queryset = Planificacion_diaria.objects.all()
