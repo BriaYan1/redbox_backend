@@ -38,7 +38,11 @@ class UsuarioRegistroSerializer(serializers.ModelSerializer):
             email=email, 
             password=password
         )
-        usuario = Usuarios.objects.create(user=user, **validated_data)
+        usuario = Usuarios.objects.create(
+            user=user,
+            creditos_usuario=20, 
+            **validated_data
+        )
         return usuario
     
 class UsuariosSerializer(serializers.ModelSerializer):
@@ -84,6 +88,7 @@ class Usuario_patologiasSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ClasesSerializer(serializers.ModelSerializer):
+    id_usuario = serializers.PrimaryKeyRelatedField(queryset=Usuarios.objects.all())
     class Meta:
         model = Clases
         fields = '__all__'

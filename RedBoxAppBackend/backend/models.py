@@ -57,6 +57,7 @@ class Usuarios(models.Model):
     )
     fecha_creacion_usuario = models.DateTimeField(auto_now_add=True)
     activo_usuario = models.BooleanField(default=True)
+    creditos_usuario = models.IntegerField(default=1)
 
 class Usuario_roles(models.Model):
     id_usuario_rol = models.AutoField(primary_key=True)

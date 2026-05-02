@@ -10,8 +10,8 @@ from django.shortcuts import get_object_or_404
 from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
-
-
+from rest_framework.response import Response
+from datetime import time
 
 """"La clase viewset es una clase que proporciona una implementación completa de las operaciones CRUD (Crear, Leer, Actualizar, Eliminar) para un modelo específico. Al definir un viewset, puedes especificar el queryset (conjunto de datos) y el serializer (serializador) que se utilizará para convertir los datos a formatos como JSON o XML."""
 
@@ -44,13 +44,17 @@ def registro(request):
     serializer = UsuarioRegistroSerializer(data=request.data)
     if serializer.is_valid():
         usuario = serializer.save()
-        token = Token.objects.create(user=usuario.user)
+        # Usamos get_or_create por si el token ya existía
+        token, created = Token.objects.get_or_create(user=usuario.user)
+        
         return Response({
             'token': token.key,
-            'user_id': usuario.user.id,
+            'user_id': usuario.id_usuario, # Usamos el ID de tu modelo Usuarios
             'email': usuario.email_usuario
         }, status=status.HTTP_201_CREATED)
 
+    # ESTO ES LO QUE DEBES REVISAR EN TU TERMINAL
+    print("ERRORES DE VALIDACIÓN:", serializer.errors)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -110,9 +114,48 @@ class ClasesViewSet(viewsets.ModelViewSet):
         queryset = Clases.objects.all()
         id_usuario = self.request.query_params.get('id_usuario')
         if id_usuario is not None:
-            # Filtra las clases que pertenecen a ese usuario
             queryset = queryset.filter(id_usuario=id_usuario)
         return queryset
+
+    def create(self, request, *args, **kwargs):
+        print("DATOS RECIBIDOS:", request.data) # Esto saldrá en tu terminal de VS Code
+        
+        id_user_recibido = request.data.get('id_usuario')
+        fecha = request.data.get('fecha_clase')
+        hora_str = request.data.get('hora_inicio_clase')
+
+        try:
+            # Validar que el usuario existe
+            perfil_usuario = Usuarios.objects.get(id_usuario=id_user_recibido)
+            
+            # Lógica de horario
+            hora_obj = time.fromisoformat(hora_str)
+            if not (time(6, 0) <= hora_obj <= time(21, 0)):
+                return Response({"error": "Horario no permitido"}, status=400)
+
+            # Lógica de duplicados
+            if Clases.objects.filter(id_usuario=id_user_recibido, fecha_clase=fecha).exists():
+                return Response({"error": "Ya tienes clase hoy"}, status=400)
+
+            # Lógica de créditos
+            if perfil_usuario.creditos_usuario <= 0:
+                return Response({"error": "Sin créditos"}, status=402)
+
+            # GUARDAR
+            serializer = self.get_serializer(data=request.data)
+            if not serializer.is_valid():
+                print("ERRORES DEL SERIALIZER:", serializer.errors) # MUY IMPORTANTE
+                return Response(serializer.errors, status=400)
+            
+            self.perform_create(serializer)
+            perfil_usuario.creditos_usuario -= 1
+            perfil_usuario.save()
+
+            return Response(serializer.data, status=201)
+
+        except Exception as e:
+            print("ERROR CRÍTICO EN DJANGO:", str(e)) # Mira tu terminal cuando des click en el botón
+            return Response({"error": str(e)}, status=500)
     
 class Planificacion_diariaViewSet(viewsets.ModelViewSet):
     queryset = Planificacion_diaria.objects.all()
