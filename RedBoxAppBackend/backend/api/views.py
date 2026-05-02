@@ -12,6 +12,8 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from datetime import time
+from rest_framework.decorators import action
+from django.db import transaction
 
 """"La clase viewset es una clase que proporciona una implementación completa de las operaciones CRUD (Crear, Leer, Actualizar, Eliminar) para un modelo específico. Al definir un viewset, puedes especificar el queryset (conjunto de datos) y el serializer (serializador) que se utilizará para convertir los datos a formatos como JSON o XML."""
 
@@ -156,6 +158,24 @@ class ClasesViewSet(viewsets.ModelViewSet):
         except Exception as e:
             print("ERROR CRÍTICO EN DJANGO:", str(e)) # Mira tu terminal cuando des click en el botón
             return Response({"error": str(e)}, status=500)
+        
+    @action(detail=True, methods=['post'])
+    def cancelar(self, request, pk=None):
+        clase = self.get_object()
+        usuario = clase.id_usuario # Obtenemos el usuario de esa clase
+
+        try:
+            with transaction.atomic():
+                # 1. Devolvemos el crédito
+                usuario.creditos_usuario += 1
+                usuario.save()
+
+                # 2. Eliminamos la clase
+                clase.delete()
+
+            return Response({'message': 'Clase cancelada y crédito devuelto'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 class Planificacion_diariaViewSet(viewsets.ModelViewSet):
     queryset = Planificacion_diaria.objects.all()
