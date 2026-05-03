@@ -89,9 +89,14 @@ class Usuario_patologiasSerializer(serializers.ModelSerializer):
 
 class ClasesSerializer(serializers.ModelSerializer):
     id_usuario = serializers.PrimaryKeyRelatedField(queryset=Usuarios.objects.all())
+    nombre_usuario = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Clases
         fields = '__all__'
+
+    def get_nombre_usuario(self, obj):
+        return f"{obj.id_usuario.pnombre_usuario} {obj.id_usuario.papellido_usuario}"
 
 class Planificacion_diariaSerializer(serializers.ModelSerializer):
     class Meta:

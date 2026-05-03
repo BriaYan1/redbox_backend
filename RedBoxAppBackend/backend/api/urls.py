@@ -18,13 +18,16 @@ router.register(r'clases', views.ClasesViewSet, basename='clases') # ✅ Esto ha
 router.register(r'planificacion_diaria', views.Planificacion_diariaViewSet, basename='planificacion_diaria')
 router.register(r'resultados', views.ResultadosViewSet, basename='resultados')
 
-# 2. Definición de urlpatterns
 urlpatterns = [
-    # Incluimos todas las rutas del router automáticamente
+    
     path('', include(router.urls)),
     
     # 3. Rutas personalizadas con re_path
     re_path(r'^login/$', views.login, name='login'),
     re_path(r'^registro/$', views.registro, name='registro'), 
     re_path(r'^perfil/$', views.perfil, name='perfil'),
+    path('registrar_pago/', views.registrar_pago, name='registrar_pago'),
+    path('suscripcion/<int:id_usuario>/', views.suscripcion_usuario, name='suscripcion_usuario'),
+    path('historial_pagos/', views.historial_pagos, name='historial_pagos'),
+    path('perfil/<int:id_usuario>/', views.perfil_usuario, name='perfil_usuario'),
 ]
