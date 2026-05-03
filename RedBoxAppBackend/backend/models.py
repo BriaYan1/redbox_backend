@@ -65,7 +65,7 @@ class Usuario_roles(models.Model):
     id_rol = models.ForeignKey(Roles, on_delete=models.CASCADE)
 
     def __str__(self):
-        return self.nombre_usuario
+        return f"{self.id_usuario} - {self.id_rol}"
     
 class Biometria(models.Model):
     id_biometria = models.AutoField(primary_key=True)
@@ -154,18 +154,9 @@ class Clases(models.Model):
     
 class Planificacion_diaria(models.Model):
     id_planificacion = models.AutoField(primary_key=True)
-    # El coach que crea el WOD
-    id_usuario = models.ForeignKey('Usuarios', on_delete=models.CASCADE, db_column='id_usuario')
-    fecha_planificacion = models.DateField(unique=True) # Una sola planificación por día
-    descripcion_planificacion = models.TextField() 
-    # Puedes añadir un campo para observaciones generales
-    observaciones = models.TextField(blank=True, null=True)
-
-    class Meta:
-        db_table = 'planificacion_diaria'
-
-    def __str__(self):
-        return f"WOD {self.fecha_planificacion}"
+    id_clase = models.ForeignKey(Clases, on_delete=models.CASCADE)
+    entrenamiento = models.TextField()
+    observaciones_planificacion_diaria = models.TextField()
 
 class Movimientos(models.Model):
     id_movimiento = models.AutoField(primary_key=True)
@@ -185,35 +176,17 @@ class Resultados(models.Model):
 class Reservas(models.Model):
     ASISTIDO = 'Asistido'
     CANCELADO = 'Cancelado'
-    PENDIENTE = 'Pendiente' # Te sugiero añadir un estado inicial
     
     ESTADOS_RESERVAS = [
         (ASISTIDO, 'Asistido'),
         (CANCELADO, 'Cancelado'),
-        (PENDIENTE, 'Pendiente'),
     ]
     
     id_reserva = models.AutoField(primary_key=True)
     id_usuario = models.ForeignKey(Usuarios, on_delete=models.CASCADE)
     id_clase = models.ForeignKey(Clases, on_delete=models.CASCADE)
-    
-    # Esta es la fecha en que se realiza el entrenamiento (YYYY-MM-DD)
-    fecha_clase = models.DateField() 
-    
-    # Auditoría: Cuándo se creó el registro
-    fecha_registro = models.DateTimeField(auto_now_add=True)
-    
+    fecha_reserva = models.DateTimeField(auto_now_add=True)
     estado_reservas = models.CharField(
         max_length=20,
         choices=ESTADOS_RESERVAS,
-        default=PENDIENTE
     )
-
-    class Meta:
-        db_table = 'reservas'
-        # ¡ESTA ES LA CLAVE! 
-        # Impide que el mismo usuario reserve más de una vez para la misma fecha.
-        unique_together = ('id_usuario', 'fecha_clase')
-
-    def __str__(self):
-        return f"Reserva {self.id_usuario} - {self.fecha_clase}"
