@@ -30,4 +30,5 @@ urlpatterns = [
     path('suscripcion/<int:id_usuario>/', views.suscripcion_usuario, name='suscripcion_usuario'),
     path('historial_pagos/', views.historial_pagos, name='historial_pagos'),
     path('perfil/<int:id_usuario>/', views.perfil_usuario, name='perfil_usuario'),
+    path('editar_mi_perfil/', views.editar_mi_perfil, name='editar_mi_perfil'),
 ]
