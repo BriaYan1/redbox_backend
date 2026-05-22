@@ -355,7 +355,8 @@ def perfil_usuario(request, id_usuario):
         return Response(datos)
     except Usuarios.DoesNotExist:
         return Response({'error': 'Usuario no encontrado'}, status=404)
-    
+
+
 @api_view(['PUT'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -363,53 +364,24 @@ def editar_mi_perfil(request):
     """
     Cualquier usuario autenticado puede editar su propio perfil
     """
-    # Obtener el usuario logueado
     try:
         usuario = Usuarios.objects.get(user=request.user)
     except Usuarios.DoesNotExist:
         return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
     
-    # Datos a actualizar
     data = request.data
+    print("Datos recibidos:", data)  # Para depuración
     
-    # Actualizar campos básicos
-    if 'pnombre_usuario' in data:
-        usuario.pnombre_usuario = data['pnombre_usuario']
-    if 'snombre_usuario' in data:
-        usuario.snombre_usuario = data['snombre_usuario']
-    if 'papellido_usuario' in data:
-        usuario.papellido_usuario = data['papellido_usuario']
-    if 'sapellido_usuario' in data:
-        usuario.sapellido_usuario = data['sapellido_usuario']
-    if 'telefono_usuario' in data:
-        usuario.telefono_usuario = data['telefono_usuario']
-    if 'fecha_nacimiento_usuario' in data:
-        usuario.fecha_nacimiento_usuario = data['fecha_nacimiento_usuario']
-    if 'genero_usuario' in data:
-        usuario.genero_usuario = data['genero_usuario']
-    if 'cedula_usuario' in data:
-        usuario.cedula_usuario = data['cedula_usuario']
+    # Actualizar campos del usuario
+    campos_usuario = [
+        'pnombre_usuario', 'snombre_usuario', 'papellido_usuario', 
+        'sapellido_usuario', 'telefono_usuario', 'fecha_nacimiento_usuario', 
+        'genero_usuario', 'cedula_usuario', 'peso', 'altura'  # Agregar peso y altura aquí
+    ]
     
-    # Actualizar peso y altura en Biometria
-    peso = data.get('peso')
-    altura = data.get('altura')
-    
-    if peso or altura:
-        # Buscar biometría existente o crear una nueva
-        biometria, created = Biometria.objects.get_or_create(
-            id_usuario=usuario,
-            defaults={
-                'tipo_biometria': 'Actualización manual',
-                'huella_hash': 'manual_update',
-                'activo_biometria': True
-            }
-        )
-        if peso:
-            biometria.peso = peso
-        if altura:
-            biometria.altura = altura
-        biometria.fecha_registro_biometria = datetime.now()
-        biometria.save()
+    for campo in campos_usuario:
+        if campo in data:
+            setattr(usuario, campo, data[campo])
     
     # Cambiar contraseña si se proporciona
     nueva_contrasena = data.get('nueva_contrasena')
@@ -421,11 +393,6 @@ def editar_mi_perfil(request):
     
     # Serializar y devolver datos actualizados
     serializer = UsuariosSerializer(usuario)
-    
-    # También devolver peso y altura actualizados
     response_data = serializer.data
-    if peso or altura:
-        response_data['peso'] = peso if peso else (biometria.peso if hasattr(biometria, 'peso') else None)
-        response_data['altura'] = altura if altura else (biometria.altura if hasattr(biometria, 'altura') else None)
     
     return Response(response_data, status=status.HTTP_200_OK)
