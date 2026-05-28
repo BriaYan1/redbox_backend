@@ -396,3 +396,46 @@ def editar_mi_perfil(request):
     response_data = serializer.data
     
     return Response(response_data, status=status.HTTP_200_OK)
+
+from django.db.models import Max, F
+from django.db.models.functions import Coalesce
+
+class MovimientosViewSet(viewsets.ModelViewSet):
+    queryset = Movimientos.objects.all()
+    serializer_class = MovimientosSerializer
+
+class ResultadosViewSet(viewsets.ModelViewSet):
+    queryset = Resultados.objects.all()
+    serializer_class = ResultadosSerializer
+    
+    def get_queryset(self):
+        queryset = Resultados.objects.all()
+        id_usuario = self.request.query_params.get('id_usuario')
+        id_movimiento = self.request.query_params.get('id_movimiento')
+        
+        if id_usuario:
+            queryset = queryset.filter(id_usuario=id_usuario)
+        if id_movimiento:
+            queryset = queryset.filter(id_movimiento=id_movimiento)
+            
+        return queryset.order_by('-fecha_evaluacion')
+    
+    def create(self, request, *args, **kwargs):
+        print("Datos recibidos:", request.data)
+        return super().create(request, *args, **kwargs)
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def mejores_resultados(request, id_usuario, id_movimiento):
+    """
+    Devuelve los 5 mejores pesos registrados para un usuario y movimiento específico
+    """
+    resultados = Resultados.objects.filter(
+        id_usuario=id_usuario,
+        id_movimiento=id_movimiento
+    ).order_by('-peso')[:5]
+    
+    serializer = ResultadosSerializer(resultados, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)

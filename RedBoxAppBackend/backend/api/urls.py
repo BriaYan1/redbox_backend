@@ -17,6 +17,7 @@ router.register(r'usuario_patologias', views.Usuario_patologiasViewSet, basename
 router.register(r'clases', views.ClasesViewSet, basename='clases') # ✅ Esto habilita GET y POST
 router.register(r'planificacion_diaria', views.Planificacion_diariaViewSet, basename='planificacion_diaria')
 router.register(r'resultados', views.ResultadosViewSet, basename='resultados')
+router.register(r'movimientos', views.MovimientosViewSet, basename='movimientos')
 
 urlpatterns = [
     
@@ -31,4 +32,5 @@ urlpatterns = [
     path('historial_pagos/', views.historial_pagos, name='historial_pagos'),
     path('perfil/<int:id_usuario>/', views.perfil_usuario, name='perfil_usuario'),
     path('editar_mi_perfil/', views.editar_mi_perfil, name='editar_mi_perfil'),
+    path('mejores_resultados/<int:id_usuario>/<int:id_movimiento>/', views.mejores_resultados, name='mejores_resultados'),
 ]

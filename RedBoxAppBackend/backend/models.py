@@ -58,6 +58,8 @@ class Usuarios(models.Model):
     fecha_creacion_usuario = models.DateTimeField(auto_now_add=True)
     activo_usuario = models.BooleanField(default=True)
     creditos_usuario = models.IntegerField(default=0)
+    peso = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    altura = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
 class Usuario_roles(models.Model):
     id_usuario_rol = models.AutoField(primary_key=True)
@@ -163,15 +165,24 @@ class Movimientos(models.Model):
     nombre_movimiento = models.CharField(max_length=100)
 
 class Resultados(models.Model):
+    KG = 'kg'
+    LB = 'lb'
+    
+    UNIDADES = [
+        (KG, 'kg'),
+        (LB, 'lb'),
+    ]
+    
     id_resultado = models.AutoField(primary_key=True)
     id_usuario = models.ForeignKey(Usuarios, on_delete=models.CASCADE)
     id_movimiento = models.ForeignKey(Movimientos, on_delete=models.CASCADE)
-    fecha_evaluacion = models.DateTimeField(auto_now_add=True)
+    fecha_evaluacion = models.DateField()  # Cambiar a DateField para que el usuario pueda elegir fecha
     fecha_registro_resultado = models.DateTimeField(auto_now_add=True)
     peso = models.DecimalField(max_digits=10, decimal_places=2)
     repeticiones = models.IntegerField()
     rondas = models.IntegerField()
-    comentarios_resultado = models.TextField()
+    unidad = models.CharField(max_length=2, choices=UNIDADES, default=KG)
+    comentarios_resultado = models.TextField(blank=True, null=True)
     
 class Reservas(models.Model):
     ASISTIDO = 'Asistido'

@@ -109,6 +109,8 @@ class MovimientosSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ResultadosSerializer(serializers.ModelSerializer):
+    nombre_movimiento = serializers.CharField(source='id_movimiento.nombre_movimiento', read_only=True)
+    
     class Meta:
         model = Resultados
         fields = '__all__'
