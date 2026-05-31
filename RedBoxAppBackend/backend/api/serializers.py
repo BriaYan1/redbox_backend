@@ -40,7 +40,7 @@ class UsuarioRegistroSerializer(serializers.ModelSerializer):
         )
         usuario = Usuarios.objects.create(
             user=user,
-            creditos_usuario=20, 
+            creditos_usuario=0, 
             **validated_data
         )
         return usuario

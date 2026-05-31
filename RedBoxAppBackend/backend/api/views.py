@@ -47,16 +47,27 @@ def registro(request):
     serializer = UsuarioRegistroSerializer(data=request.data)
     if serializer.is_valid():
         usuario = serializer.save()
-        # Usamos get_or_create por si el token ya existía
+        
+        # ✅ ASIGNAR ROL "USUARIO" AUTOMÁTICAMENTE
+        try:
+            rol_usuario = Roles.objects.get(nombre_rol='Usuario')
+            Usuario_roles.objects.create(
+                id_usuario=usuario,
+                id_rol=rol_usuario
+            )
+            print(f"✓ Rol 'Usuario' asignado a: {usuario.email_usuario}")
+        except Roles.DoesNotExist:
+            print("❌ ERROR: El rol 'Usuario' no existe. Ejecuta el script de roles primero.")
+        
+        # Generar token
         token, created = Token.objects.get_or_create(user=usuario.user)
         
         return Response({
             'token': token.key,
-            'user_id': usuario.id_usuario, # Usamos el ID de tu modelo Usuarios
+            'user_id': usuario.id_usuario,
             'email': usuario.email_usuario
         }, status=status.HTTP_201_CREATED)
 
-    # ESTO ES LO QUE DEBES REVISAR EN TU TERMINAL
     print("ERRORES DE VALIDACIÓN:", serializer.errors)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -76,6 +87,109 @@ class PatologiasViewSet(viewsets.ModelViewSet):
 class RolesViewSet(viewsets.ModelViewSet):
     queryset = Roles.objects.all()
     serializer_class = RolesSerializer
+    
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def listar_usuarios_con_roles(request):
+    """
+    Lista todos los usuarios con su rol actual.
+    Solo para administradores.
+    """
+    # Verificar que el usuario actual es administrador
+    try:
+        usuario_actual = Usuarios.objects.get(user=request.user)
+        rol_actual = Usuario_roles.objects.filter(id_usuario=usuario_actual).first()
+        
+        if not rol_actual or rol_actual.id_rol.nombre_rol != 'Administrador':
+            return Response(
+                {'error': 'No tienes permisos de administrador'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+    except Usuarios.DoesNotExist:
+        return Response(
+            {'error': 'Usuario no encontrado'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Obtener todos los usuarios con sus roles
+    usuarios = Usuarios.objects.all()
+    resultado = []
+    
+    for usuario in usuarios:
+        rol_usuario = Usuario_roles.objects.filter(id_usuario=usuario).first()
+        resultado.append({
+            'id_usuario': usuario.id_usuario,
+            'pnombre_usuario': usuario.pnombre_usuario,
+            'papellido_usuario': usuario.papellido_usuario,
+            'email_usuario': usuario.email_usuario,
+            'rol': rol_usuario.id_rol.nombre_rol if rol_usuario else 'Usuario',
+            'activo': usuario.activo_usuario
+        })
+    
+    return Response(resultado, status=status.HTTP_200_OK)
+
+
+@api_view(['PUT'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def asignar_rol(request, id_usuario):
+    """
+    Asigna un rol a un usuario específico.
+    Solo para administradores.
+    """
+    # Verificar que el usuario actual es administrador
+    try:
+        usuario_actual = Usuarios.objects.get(user=request.user)
+        rol_actual = Usuario_roles.objects.filter(id_usuario=usuario_actual).first()
+        
+        if not rol_actual or rol_actual.id_rol.nombre_rol != 'Administrador':
+            return Response(
+                {'error': 'No tienes permisos de administrador'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+    except Usuarios.DoesNotExist:
+        return Response(
+            {'error': 'Usuario no encontrado'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Obtener el usuario a modificar
+    try:
+        usuario = Usuarios.objects.get(id_usuario=id_usuario)
+    except Usuarios.DoesNotExist:
+        return Response(
+            {'error': 'Usuario a modificar no encontrado'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Obtener el nuevo rol
+    nombre_rol = request.data.get('rol')
+    if not nombre_rol:
+        return Response(
+            {'error': 'El rol es requerido'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        rol = Roles.objects.get(nombre_rol=nombre_rol)
+    except Roles.DoesNotExist:
+        return Response(
+            {'error': f'Rol "{nombre_rol}" no existe'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Actualizar o crear el rol del usuario
+    usuario_rol, created = Usuario_roles.objects.update_or_create(
+        id_usuario=usuario,
+        defaults={'id_rol': rol}
+    )
+    
+    return Response({
+        'mensaje': f'Rol actualizado a {nombre_rol} para {usuario.pnombre_usuario} {usuario.papellido_usuario}',
+        'usuario_id': usuario.id_usuario,
+        'rol': nombre_rol
+    }, status=status.HTTP_200_OK)
 
 class UsuariosViewSet(viewsets.ModelViewSet):
     queryset = Usuarios.objects.all()
@@ -202,7 +316,7 @@ def registrar_pago(request):
     Solo el admin puede llamar esto.
     Recibe: id_usuario, nombre_plan (Basico/Premium), monto, moneda, pin
     """
-    PIN_ADMIN = "1234"  # Cámbialo por el que quieras
+    PIN_ADMIN = "1234"  
 
     id_usuario    = request.data.get('id_usuario')
     nombre_plan   = request.data.get('nombre_plan')  # 'Basico' o 'Premium'
