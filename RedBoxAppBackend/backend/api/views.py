@@ -300,8 +300,22 @@ class ClasesViewSet(viewsets.ModelViewSet):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 class Planificacion_diariaViewSet(viewsets.ModelViewSet):
-    queryset = Planificacion_diaria.objects.all()
+    queryset = Planificacion_diaria.objects.all().order_by('-fecha')
     serializer_class = Planificacion_diariaSerializer
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        fecha = self.request.query_params.get('fecha')
+        if fecha:
+            queryset = queryset.filter(fecha=fecha)
+        return queryset
+    
+    def perform_create(self, serializer):
+        # Obtener el usuario actual
+        usuario = Usuarios.objects.get(user=self.request.user)
+        serializer.save(creado_por=usuario)
     
 class ResultadosViewSet(viewsets.ModelViewSet):
     queryset = Resultados.objects.all()

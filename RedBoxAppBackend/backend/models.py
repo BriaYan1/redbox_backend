@@ -156,9 +156,14 @@ class Clases(models.Model):
     
 class Planificacion_diaria(models.Model):
     id_planificacion = models.AutoField(primary_key=True)
-    id_clase = models.ForeignKey(Clases, on_delete=models.CASCADE)
-    entrenamiento = models.TextField()
-    observaciones_planificacion_diaria = models.TextField()
+    fecha = models.DateField(unique=True)
+    entrenamiento = models.TextField()  # Contenido del entrenamiento
+    observaciones = models.TextField(blank=True, null=True)
+    creado_por = models.ForeignKey(Usuarios, on_delete=models.CASCADE, null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Planificación {self.fecha}"
 
 class Movimientos(models.Model):
     id_movimiento = models.AutoField(primary_key=True)
@@ -176,7 +181,7 @@ class Resultados(models.Model):
     id_resultado = models.AutoField(primary_key=True)
     id_usuario = models.ForeignKey(Usuarios, on_delete=models.CASCADE)
     id_movimiento = models.ForeignKey(Movimientos, on_delete=models.CASCADE)
-    fecha_evaluacion = models.DateField()  # Cambiar a DateField para que el usuario pueda elegir fecha
+    fecha_evaluacion = models.DateField()  
     fecha_registro_resultado = models.DateTimeField(auto_now_add=True)
     peso = models.DecimalField(max_digits=10, decimal_places=2)
     repeticiones = models.IntegerField()
