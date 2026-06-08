@@ -15,6 +15,7 @@ from datetime import time, date
 from rest_framework.decorators import action
 from django.db import transaction
 from dateutil.relativedelta import relativedelta
+from datetime import datetime
 
 """"La clase viewset es una clase que proporciona una implementación completa de las operaciones CRUD (Crear, Leer, Actualizar, Eliminar) para un modelo específico. Al definir un viewset, puedes especificar el queryset (conjunto de datos) y el serializer (serializador) que se utilizará para convertir los datos a formatos como JSON o XML."""
 
@@ -567,3 +568,227 @@ def mejores_resultados(request, id_usuario, id_movimiento):
     
     serializer = ResultadosSerializer(resultados, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+#Obtener alumnos de un entrenador específico
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def mis_clases_con_alumnos(request):
+    """
+    Devuelve las clases del entrenador con los alumnos que han reservado.
+    """
+    try:
+        entrenador = Usuarios.objects.get(user=request.user)
+        
+        # Verificar que el usuario es entrenador
+        rol_entrenador = Usuario_roles.objects.filter(id_usuario=entrenador, id_rol__nombre_rol='Entrenador').exists()
+        if not rol_entrenador:
+            return Response({'error': 'No tienes permisos de entrenador'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Obtener todas las clases futuras donde este usuario es entrenador
+        ahora = datetime.now()
+        clases = Clases.objects.filter(
+            id_entrenador=entrenador,
+            fecha_clase__gte=ahora
+        ).order_by('fecha_clase', 'hora_inicio_clase')
+        
+        resultado = []
+        for clase in clases:
+            # Obtener el alumno que reservó esta clase
+            alumno = clase.id_usuario
+            
+            # Verificar si ya existe esta clase en el resultado (para no duplicar)
+            clase_existente = next((c for c in resultado if c['id_clase'] == clase.id_clase), None)
+            
+            if not clase_existente:
+                resultado.append({
+                    'id_clase': clase.id_clase,
+                    'fecha': clase.fecha_clase.strftime('%Y-%m-%d'),
+                    'hora_inicio': clase.hora_inicio_clase.strftime('%H:%M'),
+                    'hora_fin': clase.hora_fin_clase.strftime('%H:%M'),
+                    'descripcion': clase.descripcion_clase,
+                    'cupo_maximo': clase.cupo_maximo_clase,
+                    'alumnos': []
+                })
+                clase_existente = resultado[-1]
+            
+            # Agregar alumno a la clase
+            if alumno:
+                clase_existente['alumnos'].append({
+                    'id_usuario': alumno.id_usuario,
+                    'pnombre_usuario': alumno.pnombre_usuario,
+                    'papellido_usuario': alumno.papellido_usuario,
+                    'email_usuario': alumno.email_usuario,
+                    'telefono_usuario': alumno.telefono_usuario
+                })
+        
+        return Response(resultado, status=status.HTTP_200_OK)
+        
+    except Usuarios.DoesNotExist:
+        return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def obtener_entrenadores(request):
+    """Obtiene lista de usuarios con rol Entrenador"""
+    try:
+        entrenadores = Usuarios.objects.filter(
+            usuario_roles__id_rol__nombre_rol='Entrenador'
+        ).distinct()
+        
+        resultado = []
+        for ent in entrenadores:
+            resultado.append({
+                'id_usuario': ent.id_usuario,
+                'nombre': f"{ent.pnombre_usuario} {ent.papellido_usuario}",
+                'email': ent.email_usuario
+            })
+        return Response(resultado, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def obtener_horarios_entrenador(request, id_entrenador):
+    """Obtiene los horarios asignados a un entrenador"""
+    try:
+        # Verificar que el entrenador existe
+        try:
+            entrenador = Usuarios.objects.get(id_usuario=id_entrenador)
+        except Usuarios.DoesNotExist:
+            return Response({'error': 'Entrenador no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Obtener parámetros de fecha
+        fecha_str = request.query_params.get('fecha')
+        
+        # Construir queryset
+        queryset = HorarioEntrenador.objects.filter(id_entrenador=id_entrenador, activo=True)
+        
+        # Filtrar por fecha si se proporciona
+        if fecha_str:
+            try:
+                from datetime import datetime
+                fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+                queryset = queryset.filter(fecha=fecha)
+            except ValueError:
+                return Response({'error': 'Formato de fecha inválido. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Ordenar por fecha y hora
+        queryset = queryset.order_by('fecha', 'hora_inicio')
+        
+        # Preparar respuesta
+        resultado = []
+        for h in queryset:
+            resultado.append({
+                'id_horario': h.id_horario,
+                'fecha': h.fecha.strftime('%Y-%m-%d'),
+                'hora_inicio': h.hora_inicio,
+                'hora_fin': h.hora_fin,
+                'activo': h.activo
+            })
+        
+        print(f"Horarios encontrados: {len(resultado)}")  # Log para depuración
+        
+        return Response(resultado, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        print(f"ERROR en obtener_horarios_entrenador: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def asignar_horarios(request):
+    """Asigna múltiples horarios a un entrenador para una fecha específica"""
+    try:
+        # Verificar que es administrador
+        usuario_actual = Usuarios.objects.get(user=request.user)
+        rol_actual = Usuario_roles.objects.filter(id_usuario=usuario_actual, id_rol__nombre_rol='Administrador').exists()
+        
+        if not rol_actual:
+            return Response({'error': 'No tienes permisos de administrador'}, status=status.HTTP_403_FORBIDDEN)
+        
+        id_entrenador = request.data.get('id_entrenador')
+        fecha = request.data.get('fecha')
+        horas = request.data.get('horas', [])
+        
+        print("=== DATOS RECIBIDOS ===")
+        print(f"id_entrenador: {id_entrenador}")
+        print(f"fecha: {fecha}")
+        print(f"horas: {horas}")
+        
+        if not id_entrenador or not fecha or not horas:
+            return Response({'error': 'Faltan datos requeridos'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        horarios_asignados = []
+        errores = []
+        
+        for hora in horas:
+            # Calcular hora_fin (1 hora después)
+            hora_num = int(hora.split(':')[0])
+            hora_fin = f"{hora_num + 1:02d}:00"
+            
+            # Verificar si ya existe
+            existe = HorarioEntrenador.objects.filter(
+                id_entrenador=id_entrenador,
+                fecha=fecha,
+                hora_inicio=hora
+            ).exists()
+            
+            if not existe:
+                horario = HorarioEntrenador.objects.create(
+                    id_entrenador_id=id_entrenador,
+                    fecha=fecha,
+                    hora_inicio=hora,
+                    hora_fin=hora_fin,
+                    activo=True
+                )
+                horarios_asignados.append({
+                    'id_horario': horario.id_horario,
+                    'hora_inicio': hora,
+                    'hora_fin': hora_fin
+                })
+            else:
+                errores.append(f"El horario {hora} ya está asignado")
+        
+        return Response({
+            'mensaje': f'Se asignaron {len(horarios_asignados)} horarios',
+            'horarios_asignados': horarios_asignados,
+            'errores': errores
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        print(f"ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['DELETE'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def eliminar_horario(request, id_horario):
+    """Elimina un horario asignado a un entrenador"""
+    try:
+        usuario_actual = Usuarios.objects.get(user=request.user)
+        rol_actual = Usuario_roles.objects.filter(id_usuario=usuario_actual, id_rol__nombre_rol='Administrador').exists()
+        
+        if not rol_actual:
+            return Response({'error': 'No tienes permisos de administrador'}, status=status.HTTP_403_FORBIDDEN)
+        
+        horario = HorarioEntrenador.objects.get(id_horario=id_horario)
+        horario.delete()
+        
+        return Response({'message': 'Horario eliminado correctamente'}, status=status.HTTP_200_OK)
+        
+    except HorarioEntrenador.DoesNotExist:
+        return Response({'error': 'Horario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

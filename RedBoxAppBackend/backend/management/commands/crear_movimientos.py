@@ -2,7 +2,6 @@ from django.core.management.base import BaseCommand
 from backend.models import Movimientos
 
 class Command(BaseCommand):
-    help = 'Crea movimientos de CrossFit predeterminados'
 
     def handle(self, *args, **options):
         movimientos = [

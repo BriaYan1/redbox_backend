@@ -145,9 +145,11 @@ class Usuario_patologias(models.Model):
     id_patologia = models.ForeignKey(Patologias, on_delete=models.CASCADE)
     observaciones_patologia = models.TextField()
     
+
 class Clases(models.Model):
     id_clase = models.AutoField(primary_key=True)
-    id_usuario = models.ForeignKey(Usuarios, on_delete=models.CASCADE)
+    id_usuario = models.ForeignKey(Usuarios, on_delete=models.CASCADE, related_name='clases_reservadas')  
+    id_entrenador = models.ForeignKey(Usuarios, on_delete=models.CASCADE, related_name='clases_impartidas', null=True, blank=True)  
     fecha_clase = models.DateTimeField()
     hora_inicio_clase = models.TimeField()
     hora_fin_clase = models.TimeField()
@@ -206,3 +208,30 @@ class Reservas(models.Model):
         max_length=20,
         choices=ESTADOS_RESERVAS,
     )
+
+class HorarioEntrenador(models.Model):
+    HORAS_DISPONIBLES = [
+        ('06:00', '6:00 AM'),
+        ('07:00', '7:00 AM'),
+        ('08:00', '8:00 AM'),
+        ('09:00', '9:00 AM'),
+        ('10:00', '10:00 AM'),
+        ('15:00', '3:00 PM'),
+        ('16:00', '4:00 PM'),
+        ('17:00', '5:00 PM'),
+        ('18:00', '6:00 PM'),
+        ('19:00', '7:00 PM'),
+    ]
+    
+    id_horario = models.AutoField(primary_key=True)
+    id_entrenador = models.ForeignKey(Usuarios, on_delete=models.CASCADE, related_name='horarios')
+    fecha = models.DateField()  # Fecha específica
+    hora_inicio = models.CharField(max_length=5, choices=HORAS_DISPONIBLES)
+    hora_fin = models.CharField(max_length=5)
+    activo = models.BooleanField(default=True)
+    
+    class Meta:
+        unique_together = ['id_entrenador', 'fecha', 'hora_inicio']
+    
+    def __str__(self):
+        return f"{self.id_entrenador.pnombre_usuario} - {self.fecha} {self.hora_inicio}"

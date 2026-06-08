@@ -35,4 +35,9 @@ urlpatterns = [
     path('mejores_resultados/<int:id_usuario>/<int:id_movimiento>/', views.mejores_resultados, name='mejores_resultados'),
     path('usuarios_con_roles/', views.listar_usuarios_con_roles, name='listar_usuarios_con_roles'),
     path('asignar_rol/<int:id_usuario>/', views.asignar_rol, name='asignar_rol'),
+    path('mis_clases_con_alumnos/', views.mis_clases_con_alumnos, name='mis_clases_con_alumnos'),
+    path('entrenadores/', views.obtener_entrenadores, name='entrenadores'),
+    path('horarios_entrenador/<int:id_entrenador>/', views.obtener_horarios_entrenador, name='horarios_entrenador'),
+    path('asignar_horarios/', views.asignar_horarios, name='asignar_horarios'),
+    path('eliminar_horario/<int:id_horario>/', views.eliminar_horario, name='eliminar_horario'),
 ]

@@ -119,3 +119,14 @@ class ReservasSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reservas
         fields = '__all__'
+
+class HorarioEntrenadorSerializer(serializers.ModelSerializer):
+    dia_nombre = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = HorarioEntrenador
+        fields = '__all__'
+    
+    def get_dia_nombre(self, obj):
+        dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        return dias[obj.dia_semana] if 0 <= obj.dia_semana < len(dias) else ''
