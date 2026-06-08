@@ -224,6 +224,9 @@ class Usuario_patologiasViewSet(viewsets.ModelViewSet):
     queryset = Usuario_patologias.objects.all()
     serializer_class = Usuario_patologiasSerializer
     
+from rest_framework.decorators import action
+from django.db import transaction
+
 class ClasesViewSet(viewsets.ModelViewSet):
     queryset = Clases.objects.all()
     serializer_class = ClasesSerializer
@@ -243,33 +246,57 @@ class ClasesViewSet(viewsets.ModelViewSet):
         return queryset
 
     def create(self, request, *args, **kwargs):
-        print("DATOS RECIBIDOS:", request.data) # Esto saldrá en tu terminal de VS Code
+        print("=== CREANDO CLASE ===")
+        print("DATOS RECIBIDOS:", request.data)
         
         id_user_recibido = request.data.get('id_usuario')
         fecha = request.data.get('fecha_clase')
         hora_str = request.data.get('hora_inicio_clase')
 
         try:
-            # Validar que el usuario existe
             perfil_usuario = Usuarios.objects.get(id_usuario=id_user_recibido)
             
-            # Lógica de horario
+            # Validar horario (solo horas exactas)
             hora_obj = time.fromisoformat(hora_str)
-            if not (time(6, 0) <= hora_obj <= time(19, 0)):
-                return Response({"error": "Horario no permitido, las clases son de 6am a 19pm"}, status=400)
+            hora_exacta = hora_obj.minute == 0
+            hora_permitida = hora_obj.hour in [6,7,8,9,10,15,16,17,18,19]
+            
+            if not hora_permitida or not hora_exacta:
+                return Response({"error": "Horario no permitido. Las clases son en punto (6:00, 7:00, 8:00... 19:00)"}, status=400)
 
-            # Lógica de duplicados
+            # Validar duplicados
             if Clases.objects.filter(id_usuario=id_user_recibido, fecha_clase=fecha).exists():
                 return Response({"error": "Ya tienes clase hoy"}, status=400)
 
-            # Lógica de créditos
+            # Validar créditos
             if perfil_usuario.creditos_usuario <= 0:
                 return Response({"error": "Sin créditos"}, status=402)
 
-            # GUARDAR
-            serializer = self.get_serializer(data=request.data)
+            # Buscar entrenador asignado para este horario
+            fecha_date = datetime.strptime(fecha, '%Y-%m-%d').date()
+            horario_entrenador = HorarioEntrenador.objects.filter(
+                fecha=fecha_date,
+                hora_inicio=hora_str,
+                activo=True
+            ).first()
+            
+            print(f"Horario encontrado: {horario_entrenador}")
+            
+            id_entrenador = None
+            if horario_entrenador:
+                id_entrenador = horario_entrenador.id_entrenador.id_usuario
+                print(f"Entrenador asignado: ID {id_entrenador}")
+            else:
+                print("No hay entrenador asignado para este horario")
+
+            # Crear datos para guardar
+            data = request.data.copy()
+            if id_entrenador:
+                data['id_entrenador'] = id_entrenador
+
+            serializer = self.get_serializer(data=data)
             if not serializer.is_valid():
-                print("ERRORES DEL SERIALIZER:", serializer.errors) # MUY IMPORTANTE
+                print("ERRORES DEL SERIALIZER:", serializer.errors)
                 return Response(serializer.errors, status=400)
             
             self.perform_create(serializer)
@@ -279,25 +306,48 @@ class ClasesViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=201)
 
         except Exception as e:
-            print("ERROR CRÍTICO EN DJANGO:", str(e)) # Mira tu terminal cuando des click en el botón
+            print("ERROR CRÍTICO EN DJANGO:", str(e))
+            import traceback
+            traceback.print_exc()
             return Response({"error": str(e)}, status=500)
-        
+
+    # ✅ AGREGAR ESTE MÉTODO PARA CANCELAR CLASES
     @action(detail=True, methods=['post'])
     def cancelar(self, request, pk=None):
-        clase = self.get_object()
-        usuario = clase.id_usuario # Obtenemos el usuario de esa clase
-
+        """
+        Cancela una clase existente y devuelve el crédito al usuario.
+        """
+        print(f"=== CANCELANDO CLASE ID: {pk} ===")
+        
         try:
+            clase = self.get_object()
+            usuario = clase.id_usuario
+            
+            print(f"Clase encontrada: {clase.id_clase}")
+            print(f"Usuario: {usuario.pnombre_usuario} (Créditos actuales: {usuario.creditos_usuario})")
+            
             with transaction.atomic():
-                # 1. Devolvemos el crédito
+                # Devolver el crédito al usuario
                 usuario.creditos_usuario += 1
                 usuario.save()
-
-                # 2. Eliminamos la clase
+                print(f"Créditos después de devolver: {usuario.creditos_usuario}")
+                
+                # Eliminar la clase
                 clase.delete()
-
-            return Response({'message': 'Clase cancelada y crédito devuelto'}, status=status.HTTP_200_OK)
+                print("Clase eliminada correctamente")
+            
+            return Response({
+                'message': 'Clase cancelada y crédito devuelto',
+                'creditos_restantes': usuario.creditos_usuario
+            }, status=status.HTTP_200_OK)
+            
+        except Clases.DoesNotExist:
+            print(f"ERROR: Clase con ID {pk} no encontrada")
+            return Response({'error': 'Clase no encontrada'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
+            print(f"ERROR CRÍTICO: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 class Planificacion_diariaViewSet(viewsets.ModelViewSet):
@@ -792,3 +842,42 @@ def eliminar_horario(request, id_horario):
         return Response({'error': 'Horario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def obtener_entrenador_por_horario(request):
+    """Obtiene el entrenador asignado para una fecha y hora específica"""
+    fecha_str = request.query_params.get('fecha')
+    hora_str = request.query_params.get('hora')
+    
+    print(f"=== Buscando entrenador para fecha: {fecha_str}, hora: {hora_str} ===")
+    
+    if not fecha_str or not hora_str:
+        return Response({'error': 'Faltan fecha u hora'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+    except ValueError:
+        return Response({'error': 'Formato de fecha inválido'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Buscar entrenador con horario asignado
+    horario = HorarioEntrenador.objects.filter(
+        fecha=fecha,
+        hora_inicio=hora_str,
+        activo=True
+    ).select_related('id_entrenador').first()
+    
+    print(f"Horario encontrado: {horario}")
+    
+    if horario:
+        entrenador = horario.id_entrenador
+        print(f"Entrenador encontrado: ID {entrenador.id_usuario} - {entrenador.pnombre_usuario}")
+        return Response({
+            'id_entrenador': entrenador.id_usuario,
+            'nombre': f"{entrenador.pnombre_usuario} {entrenador.papellido_usuario}",
+            'email': entrenador.email_usuario
+        }, status=status.HTTP_200_OK)
+    
+    print("No se encontró entrenador para este horario")
+    return Response({'id_entrenador': None, 'nombre': 'Por asignar'}, status=status.HTTP_200_OK)
