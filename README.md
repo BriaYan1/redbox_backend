@@ -16,4 +16,7 @@ https://www.youtube.com/watch?v=6dpTtLczzNo&list=PLgqdACsQ8US2DCzQVrdZDZCTtTFHMY
 
 https://www.youtube.com/watch?v=KILuIyf91aA&t=372s
 
+## 📂 Se usara resend para el envio de codigos via corre electronico para recuperar contraseña
+
+
 
