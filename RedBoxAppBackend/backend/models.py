@@ -235,3 +235,20 @@ class HorarioEntrenador(models.Model):
     
     def __str__(self):
         return f"{self.id_entrenador.pnombre_usuario} - {self.fecha} {self.hora_inicio}"
+    
+class RecuperacionContrasena(models.Model):
+    id_recuperacion = models.AutoField(primary_key=True)
+    email = models.EmailField()
+    codigo = models.CharField(max_length=6)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    usado = models.BooleanField(default=False)
+    
+    def es_valido(self):
+        """Verifica si el código fue creado en los últimos 15 minutos"""
+        from django.utils import timezone
+        from datetime import timedelta
+        expiracion = self.creado_en + timedelta(minutes=15)
+        return not self.usado and timezone.now() <= expiracion
+    
+    def __str__(self):
+        return f"{self.email} - {self.codigo} - Válido: {self.es_valido()}"
