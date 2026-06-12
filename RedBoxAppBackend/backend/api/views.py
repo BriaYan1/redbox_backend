@@ -16,9 +16,20 @@ from rest_framework.decorators import action
 from django.db import transaction
 from dateutil.relativedelta import relativedelta
 from datetime import datetime
+import random
+import string
+from django.core.mail import send_mail
+from django.conf import settings
+import random
+import string
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 
 """"La clase viewset es una clase que proporciona una implementación completa de las operaciones CRUD (Crear, Leer, Actualizar, Eliminar) para un modelo específico. Al definir un viewset, puedes especificar el queryset (conjunto de datos) y el serializer (serializador) que se utilizará para convertir los datos a formatos como JSON o XML."""
 
+########################## INICIAR SESION ##############################
 @api_view(['POST'])
 def login(request):
     email = request.data.get('email_usuario')
@@ -42,6 +53,7 @@ def login(request):
 
     return Response({'token': token.key, 'user': usuario_data}, status=status.HTTP_200_OK)
 
+######################## REGISTRARSE ##############################
 
 @api_view(['POST'])
 def registro(request):
@@ -49,7 +61,7 @@ def registro(request):
     if serializer.is_valid():
         usuario = serializer.save()
         
-        # ✅ ASIGNAR ROL "USUARIO" AUTOMÁTICAMENTE
+        # ASIGNAR ROL "USUARIO" AUTOMÁTICAMENTE
         try:
             rol_usuario = Roles.objects.get(nombre_rol='Usuario')
             Usuario_roles.objects.create(
@@ -881,3 +893,135 @@ def obtener_entrenador_por_horario(request):
     
     print("No se encontró entrenador para este horario")
     return Response({'id_entrenador': None, 'nombre': 'Por asignar'}, status=status.HTTP_200_OK)
+
+########## RECUPERAR CONTRASEÑA ################################
+
+@api_view(['POST'])
+def solicitar_recuperacion(request):
+    """
+    Envía un código de verificación al email del usuario
+    """
+    email = request.data.get('email')
+    
+    if not email:
+        return Response({'error': 'El email es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        user = User.objects.get(email=email)
+        usuario = Usuarios.objects.get(user=user)
+        
+        # Generar código de 6 dígitos
+        codigo = ''.join(random.choices(string.digits, k=6))
+        
+        # Guardar en base de datos
+        RecuperacionContrasena.objects.create(
+            email=email,
+            codigo=codigo,
+            usado=False
+        )
+        
+        # Enviar email
+        try:
+            send_mail(
+                'Recuperación de contraseña - RedBox',
+                f'''Hola {usuario.pnombre_usuario},
+
+                Has solicitado recuperar tu contraseña. 
+
+                Tu código de verificación es: {codigo}
+
+                Este código expira en 15 minutos.
+
+                Si no solicitaste este cambio, ignora este mensaje.
+
+                Saludos,
+                Equipo RedBox''',
+                                settings.DEFAULT_FROM_EMAIL,
+                                [email],
+                                fail_silently=False,
+            )
+            return Response({'message': 'Código enviado al correo electrónico'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"Error enviando email: {e}")
+            return Response({'error': 'No se pudo enviar el correo'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except User.DoesNotExist:
+        # Por seguridad, no revelamos si el email existe o no
+        return Response({'message': 'Si el email existe, se enviará un código de verificación'}, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(f"Error: {e}")
+        return Response({'error': 'Error interno del servidor'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def verificar_codigo(request):
+    """
+    Verifica el código de recuperación
+    """
+    email = request.data.get('email')
+    codigo = request.data.get('codigo')
+    
+    if not email or not codigo:
+        return Response({'error': 'Email y código son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        recuperacion = RecuperacionContrasena.objects.filter(
+            email=email,
+            codigo=codigo,
+            usado=False
+        ).latest('creado_en')
+        
+        if recuperacion.es_valido():
+            return Response({'message': 'Código válido'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Código expirado. Solicita un nuevo código'}, status=status.HTTP_400_BAD_REQUEST)
+            
+    except RecuperacionContrasena.DoesNotExist:
+        return Response({'error': 'Código inválido'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def restablecer_password(request):
+    """
+    Restablece la contraseña del usuario
+    """
+    email = request.data.get('email')
+    codigo = request.data.get('codigo')
+    nueva_password = request.data.get('nueva_password')
+    
+    if not email or not codigo or not nueva_password:
+        return Response({'error': 'Todos los campos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if len(nueva_password) < 6:
+        return Response({'error': 'La contraseña debe tener al menos 6 caracteres'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        recuperacion = RecuperacionContrasena.objects.filter(
+            email=email,
+            codigo=codigo,
+            usado=False
+        ).latest('creado_en')
+        
+        if not recuperacion.es_valido():
+            return Response({'error': 'Código expirado. Solicita un nuevo código'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user = User.objects.get(email=email)
+        user.set_password(nueva_password)
+        user.save()
+        
+        # Marcar código como usado
+        recuperacion.usado = True
+        recuperacion.save()
+        
+        # Marcar todos los códigos anteriores como usados
+        RecuperacionContrasena.objects.filter(email=email, usado=False).update(usado=True)
+        
+        return Response({'message': 'Contraseña actualizada correctamente'}, status=status.HTTP_200_OK)
+        
+    except User.DoesNotExist:
+        return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    except RecuperacionContrasena.DoesNotExist:
+        return Response({'error': 'Código inválido'}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        print(f"Error: {e}")
+        return Response({'error': 'Error interno del servidor'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

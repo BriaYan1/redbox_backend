@@ -16,3 +16,6 @@ media/
 # IDEs
 .vscode/
 .idea/
+
+#Variables de entorno
+.env
