@@ -53,14 +53,141 @@ def login(request):
 
     return Response({'token': token.key, 'user': usuario_data}, status=status.HTTP_200_OK)
 
+################# CREAR INVITACIONES ###################################
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def generar_invitacion(request):
+    """
+    Genera un código de invitación único (válido por 30 minutos)
+    Solo para administradores
+    """
+    try:
+        usuario_actual = Usuarios.objects.get(user=request.user)
+        rol_actual = Usuario_roles.objects.filter(id_usuario=usuario_actual, id_rol__nombre_rol='Administrador').exists()
+        
+        if not rol_actual:
+            return Response({'error': 'No tienes permisos de administrador'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Generar código único de 16 caracteres alfanuméricos
+        codigo = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        
+        # Verificar que no exista un código igual
+        while Invitacion.objects.filter(codigo=codigo).exists():
+            codigo = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        
+        invitacion = Invitacion.objects.create(
+            codigo=codigo,
+            creado_por=usuario_actual
+        )
+        
+        return Response({
+            'codigo': invitacion.codigo,
+            'creado_en': invitacion.creado_en,
+            'valido_hasta': invitacion.creado_en + timezone.timedelta(minutes=30),
+            'es_valido': invitacion.es_valido()
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def listar_invitaciones(request):
+    """
+    Lista todas las invitaciones generadas
+    Solo para administradores
+    """
+    try:
+        usuario_actual = Usuarios.objects.get(user=request.user)
+        rol_actual = Usuario_roles.objects.filter(id_usuario=usuario_actual, id_rol__nombre_rol='Administrador').exists()
+        
+        if not rol_actual:
+            return Response({'error': 'No tienes permisos de administrador'}, status=status.HTTP_403_FORBIDDEN)
+        
+        invitaciones = Invitacion.objects.all().order_by('-creado_en')
+        
+        resultado = []
+        for inv in invitaciones:
+            resultado.append({
+                'id_invitacion': inv.id_invitacion,
+                'codigo': inv.codigo,
+                'creado_en': inv.creado_en,
+                'usado': inv.usado,
+                'usado_por': inv.usado_por.pnombre_usuario if inv.usado_por else None,
+                'creado_por': inv.creado_por.pnombre_usuario if inv.creado_por else None,
+                'es_valido': inv.es_valido()
+            })
+        
+        return Response(resultado, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def verificar_invitacion(request):
+    """
+    Verifica si un código de invitación es válido
+    """
+    codigo = request.data.get('codigo')
+    
+    if not codigo:
+        return Response({'error': 'El código es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        invitacion = Invitacion.objects.get(codigo=codigo)
+        
+        if invitacion.es_valido():
+            return Response({
+                'valido': True,
+                'mensaje': 'Código válido'
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'valido': False,
+                'mensaje': 'Código inválido o expirado'
+            }, status=status.HTTP_200_OK)
+            
+    except Invitacion.DoesNotExist:
+        return Response({
+            'valido': False,
+            'mensaje': 'Código inválido'
+        }, status=status.HTTP_200_OK)
+
 ######################## REGISTRARSE ##############################
 
 @api_view(['POST'])
 def registro(request):
+    # Verificar código de invitación
+    codigo_invitacion = request.data.get('codigo_invitacion')
+    
+    if not codigo_invitacion:
+        return Response({'error': 'El código de invitación es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        invitacion = Invitacion.objects.get(codigo=codigo_invitacion)
+        
+        if not invitacion.es_valido():
+            return Response({'error': 'Código de invitación inválido o expirado'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Marcar como usado ANTES de crear el usuario (para evitar que otro use el mismo)
+        invitacion.usado = True
+        invitacion.save()
+        
+    except Invitacion.DoesNotExist:
+        return Response({'error': 'Código de invitación inválido'}, status=status.HTTP_400_BAD_REQUEST)
+    
     serializer = UsuarioRegistroSerializer(data=request.data)
     if serializer.is_valid():
         usuario = serializer.save()
         
+        invitacion.usado_por = usuario
+        invitacion.usado_en = timezone.now()
+        invitacion.save()
         # ASIGNAR ROL "USUARIO" AUTOMÁTICAMENTE
         try:
             rol_usuario = Roles.objects.get(nombre_rol='Usuario')
