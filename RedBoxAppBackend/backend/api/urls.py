@@ -19,6 +19,7 @@ router.register(r'planificacion_diaria', views.Planificacion_diariaViewSet, base
 router.register(r'resultados', views.ResultadosViewSet, basename='resultados')
 router.register(r'movimientos', views.MovimientosViewSet, basename='movimientos')
 
+
 urlpatterns = [
     
     path('', include(router.urls)),
@@ -27,6 +28,9 @@ urlpatterns = [
     re_path(r'^login/$', views.login, name='login'),
     re_path(r'^registro/$', views.registro, name='registro'), 
     re_path(r'^perfil/$', views.perfil, name='perfil'),
+    path('generar_invitacion/', views.generar_invitacion, name='generar_invitacion'),
+    path('listar_invitaciones/', views.listar_invitaciones, name='listar_invitaciones'),
+    path('verificar_invitacion/', views.verificar_invitacion, name='verificar_invitacion'),
     path('registrar_pago/', views.registrar_pago, name='registrar_pago'),
     path('suscripcion/<int:id_usuario>/', views.suscripcion_usuario, name='suscripcion_usuario'),
     path('historial_pagos/', views.historial_pagos, name='historial_pagos'),

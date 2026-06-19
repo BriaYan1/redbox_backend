@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
-
+from django.utils import timezone
+from datetime import timedelta
+        
 # Create your models here.
 
 class Roles(models.Model):
@@ -68,6 +70,23 @@ class Usuario_roles(models.Model):
 
     def __str__(self):
         return f"{self.id_usuario} - {self.id_rol}"
+
+class Invitacion(models.Model):
+    id_invitacion = models.AutoField(primary_key=True)
+    codigo = models.CharField(max_length=10, unique=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    usado = models.BooleanField(default=False)
+    usado_en = models.DateTimeField(null=True, blank=True)
+    creado_por = models.ForeignKey(Usuarios, on_delete=models.CASCADE, related_name='invitaciones_creadas', null=True, blank=True)
+    usado_por = models.ForeignKey(Usuarios, on_delete=models.CASCADE, related_name='invitaciones_usadas', null=True, blank=True)
+    
+    def es_valido(self):
+        """Verifica si el código es válido (no usado y creado en los últimos 30 minutos)"""
+        expiracion = self.creado_en + timedelta(minutes=30)
+        return not self.usado and timezone.now() <= expiracion
+    
+    def __str__(self):
+        return f"{self.codigo} - Usado: {self.usado}"
     
 class Biometria(models.Model):
     id_biometria = models.AutoField(primary_key=True)
