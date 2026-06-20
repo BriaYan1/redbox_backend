@@ -7,6 +7,7 @@ load_dotenv()
 
 from pathlib import Path
 import os
+from urllib.parse import urlparse, parse_qsl
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -65,17 +66,36 @@ WSGI_APPLICATION = 'RedBoxAppBackend.wsgi.application'
 
 
 # Database
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "bd_redboxapp",
-        "USER": "postgres",
-        "PASSWORD": "Copito123*",
-        "HOST": "127.0.0.1",
-        "PORT": "5432",
-    }
-}
+database_url = os.getenv("DATABASE_URL") or ""
 
+if isinstance(database_url, bytes):
+
+    database_url = database_url.decode("utf-8")
+
+
+tmpPostgres = urlparse(database_url)
+
+DATABASES = {
+
+    'default': {
+
+        'ENGINE': 'django.db.backends.postgresql',
+
+        'NAME': tmpPostgres.path.replace('/', '') if isinstance(tmpPostgres.path, str) else tmpPostgres.path.decode('utf-8').replace('/', ''),
+
+        'USER': tmpPostgres.username if isinstance(tmpPostgres.username, str) else tmpPostgres.username.decode('utf-8') if tmpPostgres.username else '',
+
+        'PASSWORD': tmpPostgres.password if isinstance(tmpPostgres.password, str) else tmpPostgres.password.decode('utf-8') if tmpPostgres.password else '',
+
+        'HOST': tmpPostgres.hostname if isinstance(tmpPostgres.hostname, str) else tmpPostgres.hostname.decode('utf-8') if tmpPostgres.hostname else '',
+
+        'PORT': 5432,
+
+        'OPTIONS': dict(parse_qsl(tmpPostgres.query if isinstance(tmpPostgres.query, str) else tmpPostgres.query.decode('utf-8'))),
+
+    }
+
+}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -121,3 +141,14 @@ ANYMAIL = {
 # Correo por defecto (usa el dominio de prueba de Resend)
 # Después puedes cambiarlo por DEFAULT_FROM_EMAIL = "no-reply@tudominio.com"
 DEFAULT_FROM_EMAIL = "onboarding@resend.dev"
+
+############# Cloudflare ################
+
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.108', '190.75.32.29', 'redboxapp.duckdns.org']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '192.168.1.100',      # ← Agrega tu IP local
+    'redboxapp.duckdns.org',
+    '.duckdns.org',      
+]
