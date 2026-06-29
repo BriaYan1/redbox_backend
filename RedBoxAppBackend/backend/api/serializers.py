@@ -22,12 +22,16 @@ class UsuarioRegistroSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuarios
         fields = [
-            'user',  # lo dejamos pero como read_only e integer
+            'user', 
             'pnombre_usuario', 'snombre_usuario', 'papellido_usuario', 
             'sapellido_usuario', 'email_usuario', 'cedula_usuario', 
             'telefono_usuario', 'fecha_nacimiento_usuario', 
             'genero_usuario', 'contrasena_usuario'
         ]
+        extra_kwargs = {
+            'snombre_usuario': {'required': False, 'allow_blank': True},
+            'sapellido_usuario': {'required': False, 'allow_blank': True},
+        }
 
     def create(self, validated_data):
         validated_data.pop('user', None)  # por si acaso llega algo
