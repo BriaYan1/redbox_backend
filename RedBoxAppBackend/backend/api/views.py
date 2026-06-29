@@ -70,7 +70,7 @@ def generar_invitacion(request):
         if not rol_actual:
             return Response({'error': 'No tienes permisos de administrador'}, status=status.HTTP_403_FORBIDDEN)
         
-        # Generar código único de 16 caracteres alfanuméricos
+        # Generar código único de 8 caracteres alfanuméricos
         codigo = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
         
         # Verificar que no exista un código igual
@@ -128,41 +128,15 @@ def listar_invitaciones(request):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['POST'])
-def verificar_invitacion(request):
-    """
-    Verifica si un código de invitación es válido
-    """
-    codigo = request.data.get('codigo')
-    
-    if not codigo:
-        return Response({'error': 'El código es requerido'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    try:
-        invitacion = Invitacion.objects.get(codigo=codigo)
-        
-        if invitacion.es_valido():
-            return Response({
-                'valido': True,
-                'mensaje': 'Código válido'
-            }, status=status.HTTP_200_OK)
-        else:
-            return Response({
-                'valido': False,
-                'mensaje': 'Código inválido o expirado'
-            }, status=status.HTTP_200_OK)
-            
-    except Invitacion.DoesNotExist:
-        return Response({
-            'valido': False,
-            'mensaje': 'Código inválido'
-        }, status=status.HTTP_200_OK)
-
-######################## REGISTRARSE ##############################
+######################## REGISTRO (CORREGIDO) ##############################
 
 @api_view(['POST'])
 def registro(request):
-    # Verificar código de invitación
+    """
+    Registra un nuevo usuario en el sistema.
+    El código de invitación solo se marca como usado después de crear el usuario exitosamente.
+    """
+    #Verificar código de invitación
     codigo_invitacion = request.data.get('codigo_invitacion')
     
     if not codigo_invitacion:
@@ -174,42 +148,52 @@ def registro(request):
         if not invitacion.es_valido():
             return Response({'error': 'Código de invitación inválido o expirado'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Marcar como usado ANTES de crear el usuario (para evitar que otro use el mismo)
-        invitacion.usado = True
-        invitacion.save()
+        #validamos que existe y es válido
         
     except Invitacion.DoesNotExist:
         return Response({'error': 'Código de invitación inválido'}, status=status.HTTP_400_BAD_REQUEST)
     
+    #Validar los datos del formulario
     serializer = UsuarioRegistroSerializer(data=request.data)
-    if serializer.is_valid():
+    
+    if not serializer.is_valid():
+        #Si hay errores en el formulario, el código sigue siendo válido
+        print("❌ ERRORES DE VALIDACIÓN:", serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    #Crear el usuario (solo después de que todos los datos sean válidos)
+    try:
         usuario = serializer.save()
-        
-        invitacion.usado_por = usuario
-        invitacion.usado_en = timezone.now()
-        invitacion.save()
-        # ASIGNAR ROL "USUARIO" AUTOMÁTICAMENTE
-        try:
-            rol_usuario = Roles.objects.get(nombre_rol='Usuario')
-            Usuario_roles.objects.create(
-                id_usuario=usuario,
-                id_rol=rol_usuario
-            )
-            print(f"✓ Rol 'Usuario' asignado a: {usuario.email_usuario}")
-        except Roles.DoesNotExist:
-            print("❌ ERROR: El rol 'Usuario' no existe. Ejecuta el script de roles primero.")
-        
-        # Generar token
-        token, created = Token.objects.get_or_create(user=usuario.user)
-        
-        return Response({
-            'token': token.key,
-            'user_id': usuario.id_usuario,
-            'email': usuario.email_usuario
-        }, status=status.HTTP_201_CREATED)
-
-    print("ERRORES DE VALIDACIÓN:", serializer.errors)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        #Si falla la creación del usuario, el código sigue siendo válido
+        print(f"❌ Error creando usuario: {e}")
+        return Response({'error': 'Error al crear el usuario'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    #Marcar el código como usado (solo después de crear el usuario exitosamente)
+    invitacion.usado = True
+    invitacion.usado_por = usuario
+    invitacion.usado_en = timezone.now()
+    invitacion.save()
+    
+    #ASIGNAR ROL "USUARIO" AUTOMÁTICAMENTE
+    try:
+        rol_usuario = Roles.objects.get(nombre_rol='Usuario')
+        Usuario_roles.objects.create(
+            id_usuario=usuario,
+            id_rol=rol_usuario
+        )
+        print(f"✓ Rol 'Usuario' asignado a: {usuario.email_usuario}")
+    except Roles.DoesNotExist:
+        print("❌ ERROR: El rol 'Usuario' no existe. Ejecuta el script de roles primero.")
+    
+    #Generar token
+    token, created = Token.objects.get_or_create(user=usuario.user)
+    
+    return Response({
+        'token': token.key,
+        'user_id': usuario.id_usuario,
+        'email': usuario.email_usuario
+    }, status=status.HTTP_201_CREATED)
 
 
 @api_view(['GET'])

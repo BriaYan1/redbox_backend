@@ -46,9 +46,9 @@ class Usuarios(models.Model):
     id_usuario = models.AutoField(primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     pnombre_usuario = models.CharField(max_length=100)
-    snombre_usuario = models.CharField(max_length=100)
+    snombre_usuario = models.CharField(max_length=100, blank=True, null=True) # hace que sea opcional llenar el campo
     papellido_usuario = models.CharField(max_length=100)
-    sapellido_usuario = models.CharField(max_length=100)
+    sapellido_usuario = models.CharField(max_length=100, blank=True, null=True) # hace que sea opcional llenar el campo
     email_usuario = models.EmailField(unique=True)
     cedula_usuario = models.CharField(max_length=20, unique=True)
     telefono_usuario = models.CharField(max_length=20, unique=True)
