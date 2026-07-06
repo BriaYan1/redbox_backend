@@ -25,6 +25,10 @@ https://www.youtube.com/watch?v=KILuIyf91aA&t=372s
  * Esto se hace en la ruta (venv) C:\Users\MiPc\Desktop\Red Box App Backend\RedBoxAppBackend
 <img width="792" height="289" alt="image" src="https://github.com/user-attachments/assets/e32808cf-507a-481b-a069-962a8cef742c" />
 
+## 📂 Iniciar el repositorio
+<img width="792" height="377" alt="image" src="https://github.com/user-attachments/assets/f18ae52b-bfc4-4183-9ea3-2ae6fa2d44a4" />
+
+
 
 
 
