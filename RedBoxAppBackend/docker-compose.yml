@@ -1,0 +1,18 @@
+# docker-compose.yml
+services:
+  web:
+    build: .
+    container_name: redbox_web
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    # ❌ ELIMINA depends_on (no necesitas db local)
+    environment:
+      # ✅ CAMBIA a tu URL de Neon
+      DATABASE_URL: postgresql://neondb_owner:npg_wvLaSe6mn0QJ@ep-flat-waterfall-atrqiwwo-pooler.c-9.us-east-1.aws.neon.tech:5432/neondb?sslmode=require&channel_binding=require
+      DJANGO_DEBUG: 'True'
+      ALLOWED_HOSTS: 'localhost,127.0.0.1,0.0.0.0,192.168.1.110'
+      RESEND_API_KEY: ${RESEND_API_KEY}
+    env_file:
+      - .env

@@ -48,10 +48,16 @@ def login(request):
     try:
         usuario = Usuarios.objects.get(user=user)
         usuario_data = UsuariosSerializer(usuario).data
+        user_id = usuario.id_usuario
     except Usuarios.DoesNotExist:
         usuario_data = {'username': user.username, 'email': user.email}
+        user_id = user.id  # Fallback al id de Django
 
-    return Response({'token': token.key, 'user': usuario_data}, status=status.HTTP_200_OK)
+    return Response({
+        'token': token.key,
+        'user_id': user_id,           # ✅ Agregar user_id
+        'user': usuario_data
+    }, status=status.HTTP_200_OK)
 
 ################# CREAR INVITACIONES ###################################
 
