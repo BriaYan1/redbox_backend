@@ -18,5 +18,25 @@ https://www.youtube.com/watch?v=KILuIyf91aA&t=372s
 
 ## 📂 Se usara resend para el envio de codigos via corre electronico para recuperar contraseña
 
+## 📂 Comandos útiles de docker
+
+# Levantar los contenedores
+docker-compose up
+
+# Levantar en segundo plano (detached)
+docker-compose up -d
+
+# Detener los contenedores
+docker-compose down
+
+# Ver logs
+docker-compose logs
+
+# Entrar al shell de Django
+docker-compose exec web python manage.py shell
+
+# Entrar a la base de datos
+docker-compose exec db psql -U postgres -d bd_redboxapp
+
 
 
