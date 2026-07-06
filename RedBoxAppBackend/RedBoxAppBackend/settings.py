@@ -7,17 +7,26 @@ load_dotenv()
 
 from pathlib import Path
 import os
-from urllib.parse import urlparse, parse_qsl
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
-SECRET_KEY = 'django-insecure-xhivb31q8qvf-i7q+wo&j@bc72kwq9ql5_8dvcasw9dzipf2^x'
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-xhivb31q8qvf-i7q+wo&j@bc72kwq9ql5_8dvcasw9dzipf2^x')
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
+# ✅ ALLOWED_HOSTS simplificado
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    '192.168.1.100',
+    '192.168.1.108',
+    'redboxapp.duckdns.org',
+    '192.168.1.110',
+    '.duckdns.org',
+]
 
 # Application definition
 INSTALLED_APPS = [
@@ -31,11 +40,11 @@ INSTALLED_APPS = [
     'backend',
     'corsheaders',
     'rest_framework.authtoken',
-    'anymail',  # ✅ Agregar esta línea
+    'anymail',
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -64,38 +73,28 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'RedBoxAppBackend.wsgi.application'
 
+# ✅ Base de datos simplificada con dj_database_url
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
-# Database
-database_url = os.getenv("DATABASE_URL") or ""
-
-if isinstance(database_url, bytes):
-
-    database_url = database_url.decode("utf-8")
-
-
-tmpPostgres = urlparse(database_url)
-
-DATABASES = {
-
-    'default': {
-
-        'ENGINE': 'django.db.backends.postgresql',
-
-        'NAME': tmpPostgres.path.replace('/', '') if isinstance(tmpPostgres.path, str) else tmpPostgres.path.decode('utf-8').replace('/', ''),
-
-        'USER': tmpPostgres.username if isinstance(tmpPostgres.username, str) else tmpPostgres.username.decode('utf-8') if tmpPostgres.username else '',
-
-        'PASSWORD': tmpPostgres.password if isinstance(tmpPostgres.password, str) else tmpPostgres.password.decode('utf-8') if tmpPostgres.password else '',
-
-        'HOST': tmpPostgres.hostname if isinstance(tmpPostgres.hostname, str) else tmpPostgres.hostname.decode('utf-8') if tmpPostgres.hostname else '',
-
-        'PORT': 5432,
-
-        'OPTIONS': dict(parse_qsl(tmpPostgres.query if isinstance(tmpPostgres.query, str) else tmpPostgres.query.decode('utf-8'))),
-
+if DATABASE_URL:
+    # ✅ Usar dj_database_url para parsear la URL (más simple y robusto)
+    DATABASES = {
+        'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
     }
-
-}
+    print(f"🟢 Conectado a la base de datos: {DATABASE_URL.split('@')[-1] if '@' in DATABASE_URL else 'Neon'}")
+else:
+    # Fallback para desarrollo local sin Docker
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "bd_redboxapp",
+            "USER": "postgres",
+            "PASSWORD": "Copito123*",
+            "HOST": "localhost",
+            "PORT": "5432",
+        }
+    }
+    print("🟡 Conectado a la base de datos LOCAL")
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -113,42 +112,24 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 LANGUAGE_CODE = 'es-es'
 TIME_ZONE = 'America/Caracas'
 USE_I18N = True
 USE_TZ = True
 
-
 # Static files
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS
+CORS_ALLOW_ALL_ORIGINS = True  # Solo para desarrollo
 
 # ==================== CONFIGURACIÓN DE RESEND ====================
 
-# Backend de email usando Anymail con Resend
 EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
-
-# Configuración de Resend
 ANYMAIL = {
     "RESEND_API_KEY": os.environ.get("RESEND_API_KEY"),
 }
-
-# Correo por defecto (usa el dominio de prueba de Resend)
-# Después puedes cambiarlo por DEFAULT_FROM_EMAIL = "no-reply@tudominio.com"
 DEFAULT_FROM_EMAIL = "onboarding@resend.dev"
-
-############# Cloudflare ################
-
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.108', '190.75.32.29', 'redboxapp.duckdns.org']
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    '192.168.1.100',      # ← Agrega tu IP local
-    'redboxapp.duckdns.org',
-    '.duckdns.org',      
-]
