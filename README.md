@@ -18,25 +18,15 @@ https://www.youtube.com/watch?v=KILuIyf91aA&t=372s
 
 ## 📂 Se usara resend para el envio de codigos via corre electronico para recuperar contraseña
 
-## 📂 Comandos útiles de docker
+## 📂 Docker
+<img width="791" height="228" alt="image" src="https://github.com/user-attachments/assets/b5a01372-281a-4c6f-b2fa-e5efc936872d" />
+ * Debe revisar que temnga la virtualizacion activa ( accediento a control de tareas ), si no esta activa debe activarla en la bios
+<img width="784" height="339" alt="image" src="https://github.com/user-attachments/assets/dfac2aed-039f-4eab-beb7-de278d90029c" />
+ * Esto se hace en la ruta (venv) C:\Users\MiPc\Desktop\Red Box App Backend\RedBoxAppBackend
+<img width="792" height="289" alt="image" src="https://github.com/user-attachments/assets/e32808cf-507a-481b-a069-962a8cef742c" />
 
-# Levantar los contenedores
-docker-compose up
 
-# Levantar en segundo plano (detached)
-docker-compose up -d
 
-# Detener los contenedores
-docker-compose down
-
-# Ver logs
-docker-compose logs
-
-# Entrar al shell de Django
-docker-compose exec web python manage.py shell
-
-# Entrar a la base de datos
-docker-compose exec db psql -U postgres -d bd_redboxapp
 
 
 
