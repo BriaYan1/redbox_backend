@@ -18,15 +18,23 @@ https://www.youtube.com/watch?v=KILuIyf91aA&t=372s
 
 ## 📂 Se usara resend para el envio de codigos via corre electronico para recuperar contraseña
 
-## 📂 Docker
-<img width="791" height="228" alt="image" src="https://github.com/user-attachments/assets/b5a01372-281a-4c6f-b2fa-e5efc936872d" />
- * Debe revisar que temnga la virtualizacion activa ( accediento a control de tareas ), si no esta activa debe activarla en la bios
-<img width="784" height="339" alt="image" src="https://github.com/user-attachments/assets/dfac2aed-039f-4eab-beb7-de278d90029c" />
- * Esto se hace en la ruta (venv) C:\Users\MiPc\Desktop\Red Box App Backend\RedBoxAppBackend
-<img width="792" height="289" alt="image" src="https://github.com/user-attachments/assets/e32808cf-507a-481b-a069-962a8cef742c" />
+## 📂 Configurar y usar Docker
+* Instalar Docker ( verificar si tiene la virtualizacion activada si no activarla desde la bios
+   <img width="744" height="278" alt="image" src="https://github.com/user-attachments/assets/2d01204e-a901-4845-b789-40d11ec14b6c" /
+* Actualizar ambos repositorios ( Front y Backend )
+* Abrir la terminal delllll backen y ejecutar los siguientes comandos uno por uno:
+  <img width="835" height="393" alt="image" src="https://github.com/user-attachments/assets/94d73e82-fe76-4821-8fc1-3d31be487908" />
+  <img width="813" height="352" alt="image" src="https://github.com/user-attachments/assets/7e602976-bb92-4ac7-b9ff-15190159be16" />
+* En el archivo conexion del front verificar la ip ( que sea la ip local )
+* Ejecutar la app en expo
 
-## 📂 Iniciar el repositorio
-<img width="792" height="377" alt="image" src="https://github.com/user-attachments/assets/f18ae52b-bfc4-4183-9ea3-2ae6fa2d44a4" />
+
+  
+
+
+
+   
+
 
 
 
