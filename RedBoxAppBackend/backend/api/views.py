@@ -10,7 +10,6 @@ from django.shortcuts import get_object_or_404
 from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from datetime import time, date
 from rest_framework.decorators import action
 from django.db import transaction
@@ -22,10 +21,12 @@ from django.core.mail import send_mail
 from django.conf import settings
 import random
 import string
-from django.core.mail import send_mail
-from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
+from django.http import HttpResponse
+from backend.utils.pdf_utils import generar_pdf_historial_pagos
+import base64
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 
 """"La clase viewset es una clase que proporciona una implementación completa de las operaciones CRUD (Crear, Leer, Actualizar, Eliminar) para un modelo específico. Al definir un viewset, puedes especificar el queryset (conjunto de datos) y el serializer (serializador) que se utilizará para convertir los datos a formatos como JSON o XML."""
 
@@ -1142,3 +1143,121 @@ def restablecer_password(request):
     except Exception as e:
         print(f"Error: {e}")
         return Response({'error': 'Error interno del servidor'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+####################### PDF #################################################
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def descargar_pdf_historial_pagos(request):
+    """
+    Genera un PDF con el historial de pagos del usuario autenticado y lo devuelve en base64.
+    - Admin: puede ver pagos de todos los usuarios (con filtro opcional)
+    - Usuario/Entrenador: solo ve sus propios pagos
+    """
+    try:
+        usuario_actual = Usuarios.objects.get(user=request.user)
+        fecha_inicio = request.data.get('fecha_inicio')
+        fecha_fin = request.data.get('fecha_fin')
+        id_usuario_filtro = request.data.get('id_usuario')
+        
+        # Verificar si es administrador
+        es_admin = Usuario_roles.objects.filter(
+            id_usuario=usuario_actual,
+            id_rol__nombre_rol='Administrador'
+        ).exists()
+        
+        # ✅ Validar fechas
+        if not fecha_inicio or not fecha_fin:
+            return Response(
+                {'error': 'Debes seleccionar un rango de fechas'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # ✅ Validar que la fecha fin no sea mayor al día actual
+        try:
+            hoy = date.today()
+            fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+            if fecha_fin_dt > hoy:
+                return Response(
+                    {'error': 'La fecha fin no puede ser mayor al día actual'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except ValueError:
+            return Response(
+                {'error': 'Formato de fecha inválido. Use YYYY-MM-DD'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # ✅ Obtener pagos
+        pagos = Pagos.objects.select_related('id_usuario_plan').order_by('-fecha_pago')
+        
+        # ✅ Filtrar por fechas
+        try:
+            fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+            fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+            pagos = pagos.filter(
+                fecha_pago__date__gte=fecha_inicio_dt,
+                fecha_pago__date__lte=fecha_fin_dt
+            )
+        except ValueError:
+            return Response(
+                {'error': 'Formato de fecha inválido. Use YYYY-MM-DD'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # ✅ Filtrar por usuario según rol
+        if es_admin and id_usuario_filtro:
+            # Admin puede filtrar por usuario específico
+            try:
+                usuario_filtro = Usuarios.objects.get(id_usuario=id_usuario_filtro)
+                planes_usuario = Usuario_planes.objects.filter(
+                    id_usuario=usuario_filtro
+                ).values_list('id_plan', flat=True)
+                pagos = pagos.filter(id_usuario_plan__in=planes_usuario)
+            except Usuarios.DoesNotExist:
+                return Response(
+                    {'error': 'Usuario no encontrado'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        elif not es_admin:
+            # Usuario normal solo ve sus pagos
+            planes_propios = Usuario_planes.objects.filter(
+                id_usuario=usuario_actual
+            ).values_list('id_plan', flat=True)
+            pagos = pagos.filter(id_usuario_plan__in=planes_propios)
+        
+        # ✅ Verificar que hay pagos
+        if not pagos.exists():
+            return Response(
+                {'error': 'No hay pagos en el período seleccionado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # ✅ Generar PDF
+        pdf_buffer = generar_pdf_historial_pagos(pagos, usuario_actual, fecha_inicio, fecha_fin)
+        
+        # ✅ Convertir PDF a base64
+        pdf_base64 = base64.b64encode(pdf_buffer.getvalue()).decode('utf-8')
+        filename = f'historial_pagos_{datetime.now().strftime("%Y%m%d_%H%M")}.pdf'
+        
+        # ✅ Devolver JSON con el PDF en base64
+        return Response({
+            'success': True,
+            'pdf_base64': pdf_base64,
+            'filename': filename,
+            'message': f'PDF generado correctamente con {pagos.count()} pagos'
+        }, status=status.HTTP_200_OK)
+        
+    except Usuarios.DoesNotExist:
+        return Response(
+            {'error': 'Usuario no encontrado'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        print(f"❌ Error generando PDF: {e}")
+        import traceback
+        traceback.print_exc()
+        return Response(
+            {'error': f'Error al generar el PDF: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
