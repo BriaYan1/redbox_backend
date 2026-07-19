@@ -28,6 +28,17 @@ https://www.youtube.com/watch?v=KILuIyf91aA&t=372s
 * En el archivo conexion del front verificar la ip ( que sea la ip local )
 * Ejecutar la app en expo
 
+* Cada vez que se haga un cambio en la app ejecutar
+  # 1. Obtener los cambios
+   git pull
+
+  # 2. Reconstruir la imagen de Docker
+   docker-compose down
+   docker-compose up -d --build
+
+## 📂 PDFS
+pip install reportlab weasyprint
+
 
   
 

@@ -51,6 +51,8 @@ urlpatterns = [
     path('solicitar_recuperacion/', views.solicitar_recuperacion, name='solicitar_recuperacion'),
     path('verificar_codigo/', views.verificar_codigo, name='verificar_codigo'),
     path('restablecer_password/', views.restablecer_password, name='restablecer_password'),
+
         # endpoint que usa el ESP32 para verificar acceso biometrico
     path('biometrico/verificar/', verificar_acceso, name='verificar_acceso'),
+    path('descargar_pdf_historial_pagos/', views.descargar_pdf_historial_pagos, name='descargar_pdf_historial_pagos'),
 ]
