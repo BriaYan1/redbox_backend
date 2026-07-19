@@ -26,6 +26,7 @@ ALLOWED_HOSTS = [
     'redboxapp.duckdns.org',
     '192.168.1.110',
     '.duckdns.org',
+    '*',
 ]
 
 # Application definition

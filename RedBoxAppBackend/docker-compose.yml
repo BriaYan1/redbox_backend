@@ -10,9 +10,27 @@ services:
     # ❌ ELIMINA depends_on (no necesitas db local)
     environment:
       # ✅ CAMBIA a tu URL de Neon
-      DATABASE_URL: postgresql://neondb_owner:npg_wvLaSe6mn0QJ@ep-flat-waterfall-atrqiwwo-pooler.c-9.us-east-1.aws.neon.tech:5432/neondb?sslmode=require&channel_binding=require
+      DATABASE_URL: postgresql://neondb_owner:npg_wvLaSe6mn0QJ@ep-flat-waterfall-atrqiwwo.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
       DJANGO_DEBUG: 'True'
-      ALLOWED_HOSTS: 'localhost,127.0.0.1,0.0.0.0,192.168.1.110'
+      ALLOWED_HOSTS: 'localhost,127.0.0.1,0.0.0.0,192.168.1.110,192.168.1.6'
       RESEND_API_KEY: ${RESEND_API_KEY}
+      # ✅ NUEVO: conexion a MongoDB (contenedor local "mongo", ver servicio abajo)
+      MONGO_URI: 'mongodb://mongo:27017/'
+      MONGO_DB_NAME: 'redbox_biometria'
     env_file:
       - .env
+    depends_on:
+      - mongo
+
+  # ✅ NUEVO SERVICIO: MongoDB local, para el registro de accesos biometricos
+  mongo:
+    image: mongo:7
+    container_name: redbox_mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

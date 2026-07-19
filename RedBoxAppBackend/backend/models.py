@@ -113,7 +113,7 @@ class Usuario_planes(models.Model):
     activo_usuario_plan = models.BooleanField(default=True)
 
     def __str__(self):
-        return self.nombre_usuario
+        return f"{self.id_usuario} - {self.id_plan}"
     
 
 class Accesos(models.Model):

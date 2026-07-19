@@ -8,6 +8,9 @@ python-dotenv==1.0.1
 psycopg2-binary==2.9.10
 dj-database-url==2.2.0
 
+# ✅ NUEVO: cliente de MongoDB
+pymongo==4.10.1
+
 # Autenticación
 djangorestframework-simplejwt==5.3.1
 

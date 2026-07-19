@@ -2,6 +2,9 @@ from rest_framework import routers
 from backend.api import views
 from django.urls import path, re_path, include
 
+# import del endpoint de verificacion biometrica
+from backend.views_biometrico import verificar_acceso
+
 # 1. Configuración del Router
 router = routers.DefaultRouter()
 router.register(r'patologias', views.PatologiasViewSet, basename='patologias')
@@ -48,4 +51,6 @@ urlpatterns = [
     path('solicitar_recuperacion/', views.solicitar_recuperacion, name='solicitar_recuperacion'),
     path('verificar_codigo/', views.verificar_codigo, name='verificar_codigo'),
     path('restablecer_password/', views.restablecer_password, name='restablecer_password'),
+        # endpoint que usa el ESP32 para verificar acceso biometrico
+    path('biometrico/verificar/', verificar_acceso, name='verificar_acceso'),
 ]
